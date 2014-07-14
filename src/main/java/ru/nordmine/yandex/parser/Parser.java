@@ -84,7 +84,9 @@ public class Parser {
 					for (Node exNode : exNodeList) {
 						exList.add(exNode.getText());
 					}
-					examples.put(phrase, exList);
+					if(examples.size() < 10) {
+						examples.put(phrase, exList);
+					}
 				}
 			}
 		}
