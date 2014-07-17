@@ -1,13 +1,6 @@
-package ru.nordmine.yandex.parser;
-
+package ru.nordmine.helpers;
 
 import com.google.common.base.Splitter;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import org.apache.xerces.parsers.DOMParser;
 import org.dom4j.Document;
@@ -15,30 +8,27 @@ import org.dom4j.DocumentException;
 import org.dom4j.Node;
 import org.dom4j.io.DOMReader;
 import org.xml.sax.SAXException;
+import ru.nordmine.parser.Article;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-public class Parser {
+public class ParseArticleHelper {
 
-	private static final Logger logger = Logger.getLogger(Parser.class);
-	private static String siteBaseAddress = "http://nordmine.test/";
+	private static final Logger logger = Logger.getLogger(ParseArticleHelper.class);
 
-	public static void main(String[] args) throws Exception {
-		String word = null;
-		if (args.length >= 1) {
-			word = args[0];
-		} else {
-			return;
-		}
+	public Article getArticle(String wordFile) throws Exception {
 		Document doc = null;
 		try {
-			doc = parse("/home/nordmine/words/" + word);
+			doc = parse(wordFile);
 		} catch (DocumentException e) {
-			e.printStackTrace();
+			logger.error(e);
 		}
 		if (doc == null) {
-			return;
+			return null;
 		}
 
 		Article article = new Article();
@@ -51,6 +41,7 @@ public class Parser {
 
 		List<Node> wordNodes = headerNode.selectNodes("span[@class='b-translation__text']");
 		article.setWord(toSingleNode(wordNodes).getText().trim());
+		logger.info(article.getWord());
 
 		List<Node> soundNodes = headerNode.selectNodes("span[@class='b-translation__tr']");
 		Set<String> sounds = new LinkedHashSet<String>();
@@ -61,7 +52,7 @@ public class Parser {
 		List<Node> translationGroups = rootNode.selectNodes("div[contains(@class,'b-translation__group')]");
 		for (Node group : translationGroups) {
 			String speechPart = extractFuckingSpeechPart(group);
-			if(!speechPart.matches("[a-z]+")) {
+			if (!speechPart.matches("[a-z]+")) {
 				continue;
 			}
 			Map<String, Set<String>> parts = article.getTrans();
@@ -84,31 +75,29 @@ public class Parser {
 					for (Node exNode : exNodeList) {
 						exList.add(exNode.getText());
 					}
-					if(examples.size() < 10) {
+					if (examples.size() < 10) {
 						examples.put(phrase, exList);
 					}
 				}
 			}
 		}
-
-		String xml = article.toXml();
-		System.out.println(xml);
-		executeRequest(xml, "update_article");
+		return article;
 	}
 
 	/**
 	 * Грязный хак, ибо по-другому не работает
+	 *
 	 * @param group
 	 * @return
 	 */
-	private static String extractFuckingSpeechPart(Node group) {
+	private String extractFuckingSpeechPart(Node group) {
 		String groupXml = group.asXML();
 		String beginString = "<h2 class=\"b-translation__group-title\" id=\"";
 		int startIndex = groupXml.indexOf(beginString) + beginString.length();
 		return groupXml.substring(startIndex, groupXml.indexOf("\"", startIndex));
 	}
 
-	private static Node toSingleNode(List<Node> nodes) throws Exception {
+	private Node toSingleNode(List<Node> nodes) throws Exception {
 		if (nodes.isEmpty()) {
 			throw new Exception("node list is empty");
 		}
@@ -118,7 +107,7 @@ public class Parser {
 		return nodes.get(0);
 	}
 
-	public static Document parse(String url) throws DocumentException {
+	private Document parse(String url) throws DocumentException {
 		org.apache.xerces.xni.parser.XMLParserConfiguration config =
 				new org.cyberneko.html.HTMLConfiguration();
 		config.setFeature("http://cyberneko.org/html/features/scanner/allow-selfclosing-tags", true);
@@ -134,24 +123,5 @@ public class Parser {
 		DOMReader reader = new DOMReader();
 		org.dom4j.Document doc = reader.read(parser.getDocument());
 		return doc;
-	}
-
-	private static int executeRequest(String xml, String action) {
-		int updateCounter = 0;
-		String url = siteBaseAddress + "service/" + action;
-		HttpClient client = HttpClientBuilder.create().build();
-		HttpPost post = new HttpPost(url);
-		post.setEntity(new StringEntity(xml, "UTF-8"));
-
-		HttpResponse response;
-		try {
-			response = client.execute(post);
-			logger.info("Response Code: " + response.getStatusLine().getStatusCode());
-			String responseString = EntityUtils.toString(response.getEntity());
-			logger.info("Response: " + responseString);
-		} catch (IOException e) {
-			logger.error(e);
-		}
-		return updateCounter;
 	}
 }
