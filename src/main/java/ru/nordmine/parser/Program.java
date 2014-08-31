@@ -18,7 +18,8 @@ public class Program {
 
 	public static void main(String[] args) throws Exception {
 		Map<String, Command> commandMap = new LinkedHashMap<String, Command>();
-		commandMap.put("urls", new CreateUrlsCommand());
+		commandMap.put("urls", new CreateUrlsCommand("http://slovari.yandex.ru/", "", "urls.txt"));
+		commandMap.put("voices", new CreateUrlsCommand("https://ssl.gstatic.com/dictionary/static/sounds/de/0/", ".mp3", "voices.txt"));
 		commandMap.put("update", new UpdateWordsCommand());
 
 		if (args.length >= 2) {
@@ -46,7 +47,7 @@ public class Program {
 		} else {
 			logger.info("1st param - [" + Joiner.on(", ").join(commandMap.keySet()) + "]");
 			logger.info("2nd param - words directory (" + FREQUENCY_FILE_NAME + " expected)");
-			logger.info("3rd param - specific word [optional]");
+			logger.info("3rd param - word prefix [optional]");
 		}
 	}
 }

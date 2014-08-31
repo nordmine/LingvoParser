@@ -13,7 +13,16 @@ import java.util.Map;
 public class CreateUrlsCommand implements Command {
 
 	private static final Logger logger = Logger.getLogger(CreateUrlsCommand.class);
-	public static final String YANDEX_DICT_BASE_URL = "http://slovari.yandex.ru/";
+
+	private String urlPrefix;
+	private String urlSuffix;
+	private String fileName;
+
+	public CreateUrlsCommand(String urlPrefix, String urlSuffix, String fileName) {
+		this.urlPrefix = urlPrefix;
+		this.urlSuffix = urlSuffix;
+		this.fileName = fileName;
+	}
 
 	@Override
 	public void execute(String wordsDir, Map<String, Long> frequencyMap, String prefix) {
@@ -22,9 +31,9 @@ public class CreateUrlsCommand implements Command {
 			if (prefix != null && !item.getKey().startsWith(prefix)) {
 				continue;
 			}
-			urls.add(YANDEX_DICT_BASE_URL + item.getKey());
+			urls.add(urlPrefix + item.getKey() + urlSuffix);
 		}
-		File urlsFile = new File(wordsDir + "/urls.txt");
+		File urlsFile = new File(wordsDir + File.separator + fileName);
 		try {
 			Files.write(urlsFile.toPath(), urls, Charset.forName("utf-8"));
 		} catch (IOException e) {
