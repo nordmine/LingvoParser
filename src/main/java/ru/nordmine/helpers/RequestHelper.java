@@ -25,7 +25,8 @@ public class RequestHelper {
 		HttpResponse response;
 		try {
 			response = client.execute(post);
-			logger.info("Response Code: " + response.getStatusLine().getStatusCode());
+			int statusCode = response.getStatusLine().getStatusCode();
+			logger.info("Response Code: " + statusCode);
 			String responseString = EntityUtils.toString(response.getEntity());
 			logger.info("Response: " + responseString);
 		} catch (IOException e) {

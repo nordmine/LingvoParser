@@ -1,5 +1,6 @@
 package ru.nordmine.helpers;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import org.apache.log4j.Logger;
 import org.apache.xerces.parsers.DOMParser;
@@ -11,10 +12,7 @@ import org.xml.sax.SAXException;
 import ru.nordmine.parser.Article;
 
 import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class ParseArticleHelper {
 
@@ -34,13 +32,13 @@ public class ParseArticleHelper {
 		Article article = new Article();
 
 		List<Node> rootNodes = doc.selectNodes("//div[@class='b-translation__card b-translation__card_examples_three']");
-		Node rootNode = toSingleNode(rootNodes);
+		Node rootNode = toSingleNode("root", rootNodes);
 
 		List<Node> headerNodes = rootNode.selectNodes("//h1");
-		Node headerNode = toSingleNode(headerNodes);
+		Node headerNode = toSingleNode("header", headerNodes);
 
 		List<Node> wordNodes = headerNode.selectNodes("span[@class='b-translation__text']");
-		article.setWord(toSingleNode(wordNodes).getText().trim());
+		article.setWord(toSingleNode("word", wordNodes).getText().trim().toLowerCase());
 		logger.info(article.getWord());
 
 		List<Node> soundNodes = headerNode.selectNodes("span[@class='b-translation__tr']");
@@ -48,7 +46,10 @@ public class ParseArticleHelper {
 		for (Node sound : soundNodes) {
 			sounds.addAll(Splitter.on(",").omitEmptyStrings().trimResults().splitToList(sound.getText()));
 		}
-		article.getSounds().addAll(sounds);
+		for (String sound : sounds) {
+			// добиваемся того, чтобы каждая транскрипция была обрамлена квадратными скобками
+			article.getSounds().add("[" + sound.replace("[", "").replace("]", "") + "]");
+		}
 		List<Node> translationGroups = rootNode.selectNodes("div[contains(@class,'b-translation__group')]");
 		for (Node group : translationGroups) {
 			String speechPart = extractFuckingSpeechPart(group);
@@ -62,21 +63,25 @@ public class ParseArticleHelper {
 			for (Node trans : transNodes) {
 				List<Node> transItemNodes = trans.selectNodes("div/span/a/span[@class='b-translation__text']");
 				for (Node transItem : transItemNodes) {
-					if (transSet.size() < 5) {
+					if (transSet.size() < 5 && transItem.getText().matches("^[а-я\\s]{1,25}$")) {
 						transSet.add(transItem.getText());
 					}
 				}
 				List<Node> exampleNodes = trans.selectNodes("div[@class='b-translation__examples']/div[@class='b-translation__example']");
 				Map<String, Set<String>> examples = article.getExamples();
 				for (Node example : exampleNodes) {
-					String phrase = toSingleNode((example.selectNodes("span[@class='b-translation__example-original']/span"))).getText();
-					Set<String> exList = new LinkedHashSet<String>();
-					List<Node> exNodeList = example.selectNodes("span[@class='b-translation__text']");
-					for (Node exNode : exNodeList) {
-						exList.add(exNode.getText());
-					}
-					if (examples.size() < 10) {
-						examples.put(phrase, exList);
+					try {
+						String phrase = toSingleNode("phrase", example.selectNodes("span[@class='b-translation__example-original']/span")).getText();
+						Set<String> exList = new LinkedHashSet<String>();
+						List<Node> exNodeList = example.selectNodes("span[@class='b-translation__text']");
+						for (Node exNode : exNodeList) {
+							exList.add(exNode.getText());
+						}
+						if (examples.size() < 10) {
+							examples.put(phrase, exList);
+						}
+					} catch (Exception e) {
+						logger.warn(e.getMessage() + " phrase ignored");
 					}
 				}
 			}
@@ -97,12 +102,17 @@ public class ParseArticleHelper {
 		return groupXml.substring(startIndex, groupXml.indexOf("\"", startIndex));
 	}
 
-	private Node toSingleNode(List<Node> nodes) throws Exception {
+	private Node toSingleNode(String caption, List<Node> nodes) throws Exception {
 		if (nodes.isEmpty()) {
-			throw new Exception("node list is empty");
+			throw new Exception(caption + " is empty");
 		}
 		if (nodes.size() > 1) {
-			throw new Exception("one element in node list expected, but was " + nodes.size());
+			List<String> nodeListText = new LinkedList<String>();
+			for(Node n : nodes) {
+				nodeListText.add(n.getText());
+			}
+			throw new Exception("one element for " + caption + " expected, but was " + nodes.size()
+					+ ": " + Joiner.on(",").join(nodeListText));
 		}
 		return nodes.get(0);
 	}
