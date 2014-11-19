@@ -13,7 +13,7 @@ import java.util.Set;
 public class Article {
 
 	private String word;
-	private Long frequency;
+	private long frequency;
 	private Set<String> sounds = new LinkedHashSet<String>();
 	private Map<String, Set<String>> trans = new LinkedHashMap<String, Set<String>>();
 	private Map<String, Set<String>> examples = new LinkedHashMap<String, Set<String>>();
@@ -38,7 +38,11 @@ public class Article {
 		return examples;
 	}
 
-	public void setFrequency(Long frequency) {
+	public long getFrequency() {
+		return frequency;
+	}
+
+	public void setFrequency(long frequency) {
 		this.frequency = frequency;
 	}
 
@@ -48,7 +52,7 @@ public class Article {
 		Element wordElement = rootElement.addElement("word");
 		wordElement.setText(word);
 		Element frequencyElement = rootElement.addElement("frequency");
-		frequencyElement.setText(frequency.toString());
+		frequencyElement.setText(Long.toString(frequency));
 		Element soundsElement = rootElement.addElement("sounds");
 		for (String sound : sounds) {
 			Element soundEl = soundsElement.addElement("sound");

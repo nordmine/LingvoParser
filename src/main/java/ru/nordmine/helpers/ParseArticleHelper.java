@@ -63,7 +63,7 @@ public class ParseArticleHelper {
 			for (Node trans : transNodes) {
 				List<Node> transItemNodes = trans.selectNodes("div/span/a/span[@class='b-translation__text']");
 				for (Node transItem : transItemNodes) {
-					if (transSet.size() < 5 && transItem.getText().matches("^[а-я\\s]{1,25}$")) {
+					if (transSet.size() < 5 && transItem.getText().matches("^[а-я][а-я\\s\\-]{1,25}[а-я]$")) {
 						transSet.add(transItem.getText());
 					}
 				}

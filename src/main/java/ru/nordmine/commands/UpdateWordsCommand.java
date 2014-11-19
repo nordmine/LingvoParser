@@ -6,6 +6,7 @@ import ru.nordmine.helpers.RequestHelper;
 import ru.nordmine.parser.Article;
 
 import java.io.File;
+import java.net.URL;
 import java.util.Map;
 
 public class UpdateWordsCommand implements Command {
@@ -14,32 +15,32 @@ public class UpdateWordsCommand implements Command {
 	private ParseArticleHelper parserHelper = new ParseArticleHelper();
 
 	@Override
-	public void execute(String wordsDir, Map<String, Long> frequencyMap, String prefix) {
+	public void execute(URL siteUrl, String wordsDir, Map<String, Long> frequencyMap) {
 		for (Map.Entry<String, Long> item : frequencyMap.entrySet()) {
-			if (prefix != null && !item.getKey().startsWith(prefix)) {
-				continue;
-			}
 			File articleFile = new File(wordsDir + "/" + item.getKey());
 			if (articleFile.exists()) {
-				parseAndUpdateArticle(articleFile.toString(), frequencyMap);
+				parseAndUpdateArticle(siteUrl, articleFile.toString(), frequencyMap);
 			} else {
 				logger.error("File " + articleFile.getName() + " doesn't exists");
 			}
 		}
 	}
 
-	private void parseAndUpdateArticle(String sourceFileName, Map<String, Long> frequencyMap) {
+	private void parseAndUpdateArticle(URL siteUrl, String sourceFileName, Map<String, Long> frequencyMap) {
 		try {
+			logger.info(sourceFileName);
 			Article article = parserHelper.getArticle(sourceFileName);
 			if (article != null) {
 				if (frequencyMap.containsKey(article.getWord())) {
 					article.setFrequency(frequencyMap.get(article.getWord()));
 				}
+				logger.info(article.getFrequency());
 				String xml = article.toXml();
 				logger.info(xml);
-				RequestHelper.executeRequest(xml, "service/update_article");
+				RequestHelper.executeRequest(xml, siteUrl.toString() + "/service/update_article");
 			}
 		} catch (Exception e) {
+			e.printStackTrace();
 			logger.error(e);
 		}
 	}

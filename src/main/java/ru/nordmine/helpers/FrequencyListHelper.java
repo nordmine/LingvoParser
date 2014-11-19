@@ -15,37 +15,43 @@ public class FrequencyListHelper {
 
 	private static final Logger logger = Logger.getLogger(FrequencyListHelper.class);
 
-	public static Map<String, Long> parseFrequencyMap(String sourceFileName) {
+	public static Map<String, Long> parseFrequencyFile(String sourceFileName) {
 		File sourceFile = new File(sourceFileName);
-		Map<String, Long> frequencyMap = new LinkedHashMap<String, Long>();
+		Map<String, Long> frequencyMap = null;
 		if (sourceFile.exists()) {
 			try {
 				List<String> lines = Files.readAllLines(sourceFile.toPath(), Charset.forName("utf-8"));
-				for (String line : lines) {
-					List<String> parts = Splitter.on(",").trimResults().splitToList(line);
-					if (parts.size() >= 1) {
-						String word = parts.get(0).toLowerCase();
-						if (word.matches("^\\w+$")) {
-							if (parts.size() == 2) {
-								if (parts.get(1).matches("^\\d+$")) {
-									logger.debug(word + " " + parts.get(1));
-									if (frequencyMap.get(word) == null) {
-										frequencyMap.put(word, Long.parseLong(parts.get(1)));
-									}
-									continue;
-								}
-							}
-							logger.warn(word + " without frequency");
-						} else {
-							logger.warn("Word *" + word + "* doesn't matches to regexp");
-						}
-					}
-				}
+				frequencyMap = parseFrequencyLines(lines);
 			} catch (IOException e) {
 				logger.error(e);
 			}
 		} else {
 			logger.error("File *" + sourceFileName + "* does not exist");
+		}
+		return frequencyMap;
+	}
+
+	public static Map<String, Long> parseFrequencyLines(List<String> lines) {
+		Map<String, Long> frequencyMap = new LinkedHashMap<String, Long>();
+		for (String line : lines) {
+			List<String> parts = Splitter.on(",").trimResults().splitToList(line);
+			if (parts.size() >= 1) {
+				String word = parts.get(0).toLowerCase();
+				if (word.matches("^[a-z][a-z\\-]{1,23}[a-z]$")) {
+					long frequency = 0;
+					if (parts.size() >= 2) {
+						if (parts.get(1).matches("^\\d+$")) {
+							frequency = Long.parseLong(parts.get(1));
+						}
+					}
+					logger.debug(word + " " + frequency);
+					if (frequencyMap.get(word) == null) {
+						frequencyMap.put(word, frequency);
+					}
+				} else {
+					logger.warn(word + ": bad format");
+				}
+			}
 		}
 		return frequencyMap;
 	}
