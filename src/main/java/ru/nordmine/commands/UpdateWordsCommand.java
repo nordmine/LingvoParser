@@ -1,5 +1,7 @@
 package ru.nordmine.commands;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import ru.nordmine.helpers.ParseArticleHelper;
 import ru.nordmine.helpers.RequestHelper;
@@ -37,7 +39,11 @@ public class UpdateWordsCommand implements Command {
 				logger.info(article.getFrequency());
 				String xml = article.toXml();
 				logger.info(xml);
-				RequestHelper.executeRequest(xml, siteUrl.toString() + "/service/update_article");
+				HttpResponse response = RequestHelper.executeRequest(xml, siteUrl.toString() + "/service/update_article");
+				if (response.getStatusLine().getStatusCode() == 200) {
+					String responseString = EntityUtils.toString(response.getEntity());
+					logger.info("Response: " + responseString);
+				}
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
