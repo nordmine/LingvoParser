@@ -37,7 +37,7 @@ public class FrequencyListHelper {
 			List<String> parts = Splitter.on(",").trimResults().splitToList(line);
 			if (parts.size() >= 1) {
 				String word = parts.get(0).toLowerCase();
-				if (word.matches("^[a-z][a-z\\-]{1,23}[a-z]$")) {
+				if (word.matches("^[a-z][a-z\\-]{0,23}[a-z]$")) {
 					long frequency = 0;
 					if (parts.size() >= 2) {
 						if (parts.get(1).matches("^\\d+$")) {

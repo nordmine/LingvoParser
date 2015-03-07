@@ -1,5 +1,6 @@
 package ru.nordmine.helpers;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import org.apache.log4j.Logger;
@@ -9,7 +10,8 @@ import org.dom4j.DocumentException;
 import org.dom4j.Node;
 import org.dom4j.io.DOMReader;
 import org.xml.sax.SAXException;
-import ru.nordmine.parser.Article;
+import ru.nordmine.model.Article;
+import ru.nordmine.model.Translation;
 
 import java.io.IOException;
 import java.util.*;
@@ -42,7 +44,10 @@ public class ParseArticleHelper {
 		logger.info(article.getWord());
 
 		List<Node> soundNodes = headerNode.selectNodes("span[@class='b-translation__tr']");
-		Set<String> sounds = new LinkedHashSet<String>();
+		if (soundNodes.isEmpty()) {
+			soundNodes = rootNode.selectNodes("div[1]/span[@class='b-translation__tr']");
+		}
+		Set<String> sounds = new LinkedHashSet<>();
 		for (Node sound : soundNodes) {
 			sounds.addAll(Splitter.on(",").omitEmptyStrings().trimResults().splitToList(sound.getText()));
 		}
@@ -50,56 +55,136 @@ public class ParseArticleHelper {
 			// добиваемся того, чтобы каждая транскрипция была обрамлена квадратными скобками
 			article.getSounds().add("[" + sound.replace("[", "").replace("]", "") + "]");
 		}
+		int mainSpeechPartRating = 0;
 		List<Node> translationGroups = rootNode.selectNodes("div[contains(@class,'b-translation__group')]");
 		for (Node group : translationGroups) {
-			String speechPart = extractFuckingSpeechPart(group);
+			Node speechPartNode = group.selectSingleNode("h2[@class='b-translation__group-title']/@id");
+			if (speechPartNode == null) {
+				continue;
+			}
+			String speechPart = speechPartNode.getText().trim().toLowerCase();
 			if (!speechPart.matches("[a-z]+")) {
 				continue;
 			}
-			Map<String, Set<String>> parts = article.getTrans();
-			Set<String> transSet = new LinkedHashSet<String>();
+			Map<String, Set<Translation>> parts = article.getTrans();
+			Set<Translation> transSet = new LinkedHashSet<>();
 			parts.put(speechPart, transSet);
 			List<Node> transNodes = group.selectNodes("ol/li");
+			int exampleCounter = 0;
+			int transCounter = 0;
 			for (Node trans : transNodes) {
-				List<Node> transItemNodes = trans.selectNodes("div/span/a/span[@class='b-translation__text']");
+				// формируем список сокращений для данного перевода
+				List<Node> abbrNodes = trans.selectNodes("//node()[@class = 'b-translation__abbr']");
+				Set<String> abbrs = new HashSet<>();
+				for (Node abbrNode : abbrNodes) {
+					abbrs.add(abbrNode.getStringValue());
+				}
+				List<Node> transItemNodes = trans.selectNodes("div/span");
 				for (Node transItem : transItemNodes) {
-					if (transSet.size() < 5 && transItem.getText().matches("^[а-я][а-я\\s\\-]{1,25}[а-я]$")) {
-						transSet.add(transItem.getText());
+					List<String> splittedTranslations = Splitter.on(";")
+							.omitEmptyStrings()
+							.splitToList(
+									replaceSymbolInParentheses(transItem.getStringValue(), ';', ',')
+							);
+
+					for (String splittedTranslation : splittedTranslations) {
+						for (String abbr : abbrs) {
+							if (splittedTranslation.contains(abbr)) {
+								// исключаем сокращения из текста перевода
+								splittedTranslation = splittedTranslation.replace(abbr, "");
+							}
+						}
+						String trimmedTranslation = CharMatcher.anyOf(";,- ").or(CharMatcher.inRange('a', 'z')).trimFrom(splittedTranslation);
+						Translation translation = populateTranslation(trimmedTranslation.replace('«', '"').replace('»', '"'));
+						if (translation.getText() != null && translation.getText().matches("^[а-яА-Я\"][а-яА-Я\\s\\-,\\.\\?!\"]{0,98}[а-яА-Я\\.\\?!\"]$")) {
+							if (transSet.size() < 5) {
+								transSet.add(translation);
+							}
+							transCounter++;
+						}
 					}
 				}
 				List<Node> exampleNodes = trans.selectNodes("div[@class='b-translation__examples']/div[@class='b-translation__example']");
-				Map<String, Set<String>> examples = article.getExamples();
+				Map<String, String> examples = article.getExamples();
 				for (Node example : exampleNodes) {
 					try {
 						String phrase = toSingleNode("phrase", example.selectNodes("span[@class='b-translation__example-original']/span")).getText();
-						Set<String> exList = new LinkedHashSet<String>();
+						Set<String> exList = new LinkedHashSet<>();
 						List<Node> exNodeList = example.selectNodes("span[@class='b-translation__text']");
 						for (Node exNode : exNodeList) {
 							exList.add(exNode.getText());
 						}
 						if (examples.size() < 10) {
-							examples.put(phrase, exList);
+							examples.put(phrase, Joiner.on(' ').join(exList));
 						}
+						exampleCounter += exampleNodes.size();
 					} catch (Exception e) {
 						logger.warn(e.getMessage() + " phrase ignored");
 					}
 				}
 			}
+			int currentSpeechPartRating = transCounter + exampleCounter;
+			logger.info(speechPart + " rate = " + currentSpeechPartRating);
+			if (mainSpeechPartRating < currentSpeechPartRating) {
+				mainSpeechPartRating = currentSpeechPartRating;
+				article.setMainSpeechPart(speechPart);
+			}
 		}
 		return article;
 	}
 
-	/**
-	 * Грязный хак, ибо по-другому не работает
-	 *
-	 * @param group
-	 * @return
-	 */
-	private String extractFuckingSpeechPart(Node group) {
-		String groupXml = group.asXML();
-		String beginString = "<h2 class=\"b-translation__group-title\" id=\"";
-		int startIndex = groupXml.indexOf(beginString) + beginString.length();
-		return groupXml.substring(startIndex, groupXml.indexOf("\"", startIndex));
+	private static Translation populateTranslation(String transText) throws Exception {
+		int beginParentheses = transText.indexOf('(');
+		Translation translation = new Translation();
+		if (beginParentheses == -1) {
+			translation.setText(transText.trim());
+		} else {
+			int endParentheses = transText.indexOf(')', beginParentheses);
+			if (endParentheses == -1) {
+				// если не найдена закрывающая скобка, считаем, что комментарий идёт до конца
+				endParentheses = transText.length();
+			}
+			if (beginParentheses >= endParentheses) {
+				throw new Exception("Bad parentheses");
+			}
+			String comment = transText.substring(beginParentheses + 1, endParentheses).trim();
+			if (comment.length() <= 150) {
+				translation.setComment(comment);
+			}
+			if (beginParentheses == 0) {
+				// комментарий идёт в начале
+				if (endParentheses < transText.length()) {
+					translation.setText(transText.substring(endParentheses + 1).trim());
+				}
+			} else {
+				// комментарий идёт в конце
+				translation.setText(transText.substring(0, beginParentheses).trim());
+			}
+		}
+		return translation;
+	}
+
+	private static String replaceSymbolInParentheses(String source, char symbol, char replacement) throws Exception {
+		StringBuilder result = new StringBuilder();
+		int openedParentheses = 0;
+		for (char c : source.toCharArray()) {
+			if (c == '(') {
+				openedParentheses++;
+			}
+			if (c == ')') {
+				openedParentheses--;
+				if (openedParentheses < 0) {
+					logger.warn("Opened parentheses index less than zero! Skipped.");
+					return "";
+				}
+			}
+			if (c == symbol && openedParentheses > 0) {
+				result.append(replacement);
+			} else {
+				result.append(c);
+			}
+		}
+		return result.toString();
 	}
 
 	private Node toSingleNode(String caption, List<Node> nodes) throws Exception {
@@ -108,7 +193,7 @@ public class ParseArticleHelper {
 		}
 		if (nodes.size() > 1) {
 			List<String> nodeListText = new LinkedList<String>();
-			for(Node n : nodes) {
+			for (Node n : nodes) {
 				nodeListText.add(n.getText());
 			}
 			throw new Exception("one element for " + caption + " expected, but was " + nodes.size()

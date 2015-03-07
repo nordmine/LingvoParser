@@ -1,11 +1,12 @@
 package ru.nordmine.commands;
 
+import com.google.gson.GsonBuilder;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.apache.log4j.Logger;
 import ru.nordmine.helpers.ParseArticleHelper;
 import ru.nordmine.helpers.RequestHelper;
-import ru.nordmine.parser.Article;
+import ru.nordmine.model.Article;
 
 import java.io.File;
 import java.net.URL;
@@ -37,9 +38,13 @@ public class UpdateWordsCommand implements Command {
 					article.setFrequency(frequencyMap.get(article.getWord()));
 				}
 				logger.info(article.getFrequency());
-				String xml = article.toXml();
-				logger.info(xml);
-				HttpResponse response = RequestHelper.executeRequest(xml, siteUrl.toString() + "/service/update_article");
+				String json = new GsonBuilder()
+//						.setPrettyPrinting()
+						.create()
+						.toJson(article);
+
+				logger.info(json);
+				HttpResponse response = RequestHelper.executeRequest(json, siteUrl.toString() + "/admin/update_article");
 				if (response.getStatusLine().getStatusCode() == 200) {
 					String responseString = EntityUtils.toString(response.getEntity());
 					logger.info("Response: " + responseString);

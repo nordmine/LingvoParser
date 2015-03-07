@@ -49,11 +49,11 @@ public class Program {
 			}
 
 			// удаляем из списка все слова, которые уже активны на сайте
-			int lengthBefore = frequencyMap.size();
+			/*int lengthBefore = frequencyMap.size();
 			for(String activeWord : getWordListFromSite(siteUrl, "/admin/active_words/")) {
 				frequencyMap.remove(activeWord);
 			}
-			logger.info(lengthBefore - frequencyMap.size() + " words already active on site");
+			logger.info(lengthBefore - frequencyMap.size() + " words already active on site");*/
 
 			if (commandMap.containsKey(command)) {
 				commandMap.get(command).execute(siteUrl, wordsDir, frequencyMap);
