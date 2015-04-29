@@ -29,14 +29,16 @@ public class GetContentCommand implements Command {
 			} else {
 				try {
 					String url = "http://slovari.yandex.ru/" + URLEncoder.encode(entry.getKey(), "utf-8") + "/" + URLEncoder.encode("перевод", "utf-8");
-					HttpResponse response = RequestHelper.executeRequest("", url);
-					if (response.getStatusLine().getStatusCode() == 200) {
+					logger.info(url);
+					HttpResponse response = RequestHelper.executeGetRequest(url);
+					int statusCode = response.getStatusLine().getStatusCode();
+					if (statusCode == 200) {
 						String responseBody = EntityUtils.toString(response.getEntity(), Charsets.UTF_8);
 						logger.info("Length for " + entry.getKey() + ": " + responseBody.length());
 						FileUtils.writeStringToFile(f, responseBody, Charsets.UTF_8);
-					} else if (response.getStatusLine().getStatusCode() == 404) {
+					} else if (statusCode == 404) {
 						logger.error("Word " + entry.getKey() + " not found");
-					} else if (response.getStatusLine().getStatusCode() == 302) {
+					} else if (statusCode == 302) {
 						logger.warn("Redirect for " + entry.getKey() + ": " + response.getFirstHeader("Location").getValue());
 					}
 					TimeUnit.MILLISECONDS.sleep(500 + random.nextInt(500));
