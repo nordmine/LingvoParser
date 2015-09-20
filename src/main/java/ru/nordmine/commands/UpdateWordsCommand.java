@@ -19,13 +19,16 @@ public class UpdateWordsCommand implements Command {
 
 	@Override
 	public void execute(URL siteUrl, String wordsDir, Map<String, Long> frequencyMap) {
+		int counter = 0;
 		for (Map.Entry<String, Long> item : frequencyMap.entrySet()) {
+			logger.info("Progress: " + counter + " / " + frequencyMap.size());
 			File articleFile = new File(wordsDir + "/" + item.getKey());
 			if (articleFile.exists()) {
 				parseAndUpdateArticle(siteUrl, articleFile.toString(), frequencyMap);
 			} else {
 				logger.error("File " + articleFile.getName() + " doesn't exists");
 			}
+			counter++;
 		}
 	}
 

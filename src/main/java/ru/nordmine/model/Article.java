@@ -7,6 +7,8 @@ import java.util.Set;
 
 public class Article {
 
+	public static final String EN_WORD_PATTERN = "^[a-z][a-z\\-]{0,23}[a-z]?$";
+
 	private String word;
 	private long frequency;
 	private String mainSpeechPart;

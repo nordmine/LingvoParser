@@ -2,6 +2,7 @@ package ru.nordmine.helpers;
 
 import com.google.common.base.Splitter;
 import org.apache.log4j.Logger;
+import ru.nordmine.model.Article;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +38,7 @@ public class FrequencyListHelper {
 			List<String> parts = Splitter.on(",").trimResults().splitToList(line);
 			if (parts.size() >= 1) {
 				String word = parts.get(0).toLowerCase();
-				if (word.matches("^[a-z][a-z\\-]{0,23}[a-z]$")) {
+				if (word.matches(Article.EN_WORD_PATTERN)) {
 					long frequency = 0;
 					if (parts.size() >= 2) {
 						if (parts.get(1).matches("^\\d+$")) {

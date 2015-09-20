@@ -52,7 +52,7 @@ public class Program {
 			}
 		} else {
 			logger.info("1st param - site url (e.g. \"nordmine.ru\")");
-			logger.info("2nd param - absolute path for words directory");
+			logger.info("2nd param - absolute path for words directory (with / at the and)");
 			logger.info("3rd param - [" + Joiner.on(", ").join(commandMap.keySet()) + "]");
 			logger.info("4th param - frequency file [optional, if not specified - list from site]");
 		}

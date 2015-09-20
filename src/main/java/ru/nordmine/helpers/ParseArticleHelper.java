@@ -97,7 +97,7 @@ public class ParseArticleHelper {
 						String trimmedTranslation = CharMatcher.anyOf(";,- ").or(CharMatcher.inRange('a', 'z')).trimFrom(splittedTranslation);
 						Translation translation = populateTranslation(trimmedTranslation.replace('«', '"').replace('»', '"'));
 						if (translation.getText() != null && translation.getText().matches("^[а-яА-Я\"][а-яА-Я\\s\\-,\\.\\?!\"]{0,98}[а-яА-Я\\.\\?!\"]$")) {
-							if (transSet.size() < 5) {
+							if (transSet.size() < 7) {
 								transSet.add(translation);
 							}
 							transCounter++;
@@ -114,7 +114,7 @@ public class ParseArticleHelper {
 						for (Node exNode : exNodeList) {
 							exList.add(exNode.getText());
 						}
-						if (examples.size() < 10) {
+						if (examples.size() < 20) {
 							examples.put(phrase, Joiner.on(' ').join(exList));
 						}
 						exampleCounter += exampleNodes.size();
