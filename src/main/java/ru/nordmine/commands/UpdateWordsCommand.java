@@ -50,7 +50,7 @@ public class UpdateWordsCommand implements Command {
 				HttpResponse response = RequestHelper.executeRequest(json, siteUrl.toString() + "/admin/update_article");
 				if (response.getStatusLine().getStatusCode() == 200) {
 					String responseString = EntityUtils.toString(response.getEntity());
-					logger.info("Response: " + responseString);
+					logger.info("Response for " + article.getWord() + ": " + responseString);
 				}
 			}
 		} catch (Exception e) {
